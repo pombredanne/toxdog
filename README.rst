@@ -37,7 +37,6 @@ Support / Report Issues
 
 All support requests and issue reports should be
 `filed on Github as an issue <https://github.com/SethMichaelLarson/toxdog/issues>`_.
-Make sure to follow the template so your request may be as handled as quickly as possible.
 Please respect contributors by not using personal contacts for support requests.
 
 License
