@@ -1,21 +1,9 @@
 Toxdog
-=======
+======
 
 .. image:: https://img.shields.io/travis/SethMichaelLarson/toxdog/master.svg
     :target: https://travis-ci.org/SethMichaelLarson/toxdog
-    :alt: Linux and MacOS Build Status
-.. image:: https://img.shields.io/appveyor/ci/SethMichaelLarson/toxdog/master.svg
-    :target: https://ci.appveyor.com/project/SethMichaelLarson/toxdog
-    :alt: Windows Build Status
-.. image:: https://img.shields.io/codecov/c/github/SethMichaelLarson/toxdog/master.svg
-    :target: https://codecov.io/gh/SethMichaelLarson/toxdog
-    :alt: Test Suite Coverage
-.. image:: https://img.shields.io/codeclimate/github/SethMichaelLarson/toxdog.svg
-    :target: https://codeclimate.com/github/SethMichaelLarson/toxdog
-    :alt: Code Health
-.. image:: https://readthedocs.org/projects/toxdog/badge/?version=latest
-    :target: http://toxdog.readthedocs.io
-    :alt: Documentation Build Status
+    :alt: Linux Build Status
 .. image:: https://pyup.io/repos/github/SethMichaelLarson/toxdog/shield.svg
      :target: https://pyup.io/repos/github/SethMichaelLarson/toxdog
      :alt: Dependency Versions
@@ -27,33 +15,22 @@ Toxdog
     :alt: Say Thanks to the Maintainers
 
 Automatically run tox jobs for real-time feedback on changes.
+Simple customization options available.
 
 Getting Started with Toxdog
-----------------------------
+---------------------------
 
 Toxdog is available on PyPI can be installed with `pip <https://pip.pypa.io>`_.::
 
     $ python -m pip install toxdog
 
-To install the latest development version from `Github <https://github.com/SethMichaelLarson/toxdog>`_::
+After installing Toxdog you can view the help menu by executing the following command:
 
-    $ python -m pip install git+git://github.com/SethMichaelLarson/toxdog.git
+.. code-block:: bash
 
+    toxdog --help
 
-If your current Python installation doesn't have pip available, try `get-pip.py <bootstrap.pypa.io>`_
-
-After installing Toxdog you can use it like any other Python module.
-Here's a very simple example:
-
-.. code-block:: python
-
-    import toxdog
-    # Fill this section in with the common use-case.
-
-API Reference
--------------
-
-The `API Reference on readthedocs.io <http://toxdog.readthedocs.io>`_ provides API-level documentation.
+To run toxdog in the current working directory execute the following command
 
 Support / Report Issues
 -----------------------
@@ -63,12 +40,7 @@ All support requests and issue reports should be
 Make sure to follow the template so your request may be as handled as quickly as possible.
 Please respect contributors by not using personal contacts for support requests.
 
-Contributing
-------------
-
-We happily welcome contributions, please see `our guide for Contributors <http://toxdog.readthedocs.io/en/latest/contributing.html>`_ for the best places to start and help.
-
 License
 -------
 
-toxdog is made available under the MIT License. For more details, see `LICENSE.txt <https://github.com/SethMichaelLarson/toxdog/blob/master/LICENSE.txt>`_.
+toxdog is made available under the Apache v2.0 License. For more details, see `LICENSE.txt <https://github.com/SethMichaelLarson/toxdog/blob/master/LICENSE.txt>`_.

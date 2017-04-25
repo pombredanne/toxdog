@@ -1,9 +1,13 @@
 Changelog
 =========
 
-Release 1.0.0 (Development)
----------------------------
+View all `releases and downloads on GitHub <https://github.com/SethMichaelLarson/toxdog/releases>`_
+or `PyPI <https://pypi.python.org/pypi/toxdog>`_.
+View the `bug tracker on GitHub <https://github.com/SethMichaelLarson/toxdog/issues>`_.
 
-* Initial release
+1.0.0 (April 25, 2017)
+----------------------
 
-* (Add summary of changes here, along with author.)
+** Enhancements **
+
+- Initial Release of Toxdog

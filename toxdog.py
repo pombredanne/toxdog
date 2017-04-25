@@ -1,11 +1,32 @@
+""" Automatically run tox jobs for real-time feedback on changes. """
+
+# Copyright 2017 Seth Michael Larson
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 __author__ = 'Seth Michael Larson'
 __email__ = 'sethmichaellarson@protonmail.com'
-__license__ = 'MIT'
-__version__ = 'dev'
+__license__ = 'Apache-2.0'
+__version__ = '1.0.0'
 
+import argparse
+import multiprocessing
 import os
 import sys
-import subprocess
+try:
+    import subprocess32 as subprocess
+except ImportError:
+    import subprocess
 import time
 import threading
 from colorama import init, Fore, Style
@@ -24,13 +45,13 @@ DEVNULL = open(os.devnull, 'a+')
 
 
 class ToxProcess(object):
-    def __init__(self, env):
+    def __init__(self, env, path):
         self.env = env
         self.proc = subprocess.Popen('tox -e %s' % env,
                                      shell=True,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT,
-                                     cwd=os.getcwd())
+                                     cwd=path)
         self.output = b''
         self._buffer = b''
 
@@ -41,8 +62,8 @@ class ToxProcess(object):
     def poll(self):
         start_value = self.proc.returncode
         try:
-            self.proc.communicate(timeout=0.1)
-        except subprocess.TimeoutExpired:
+            self.proc.poll()
+        except Exception:
             return False
         return self.proc.returncode is not start_value
 
@@ -53,13 +74,18 @@ class ToxProcess(object):
 
 
 class ToxdogThread(threading.Thread):
-    def __init__(self, queue):
+    def __init__(self, queue, path, envs, omit_envs):
         super(ToxdogThread, self).__init__()
         self.queue = queue
+        self.path = path
+        self.envs = envs
+        self.omit_envs = omit_envs
         self.running = True
         self.tox_procs = {}
+        self.tox_waiting_envs = []
         self.lock = threading.Lock()
         self.reason = ''
+        self.max_concurrent = min(4, multiprocessing.cpu_count())
 
     def run(self):
         while self.running:
@@ -69,7 +95,7 @@ class ToxdogThread(threading.Thread):
                     self.start_processes(Fore.LIGHTCYAN_EX + 'INITIAL' + Fore.LIGHTWHITE_EX)
                 else:
                     assert isinstance(event, FileSystemEvent)
-                    path = os.path.relpath(event.src_path, os.getcwd())
+                    path = os.path.relpath(event.src_path, self.path)
                     if event.event_type == EVENT_TYPE_DELETED:
                         action = 'DELETE'
                     else:
@@ -78,34 +104,56 @@ class ToxdogThread(threading.Thread):
                     self.start_processes('%s %s' % (action, path))
             except Empty:
                 self.poll_processes()
-                time.sleep(1.0)
+                time.sleep(0.5)
 
         self.kill_processes()
 
     def start_processes(self, reason):
         self.reason = reason
         try:
-            tox_config = parseconfig()
+            tox_config = parseconfig(['-c', self.path])
         except Exception:
             return
 
         self.kill_processes()
 
-        for env in sorted(tox_config.envconfigs):
-            self.tox_procs[env] = ToxProcess(env)
+        self.tox_waiting_envs = [x for x in sorted(tox_config.envconfigs) if (len(self.envs) == 0 or x in self.envs) and x not in self.omit_envs]
+        for env in self.tox_waiting_envs:
+            self.tox_procs[env] = None
+        self.start_next_process()
 
         self.update_status()
 
+    def start_next_process(self):
+        if len(self.tox_waiting_envs) > 0:
+            tox_env = self.tox_waiting_envs[0]
+            self.tox_waiting_envs = self.tox_waiting_envs[1:]
+            self.tox_procs[tox_env] = ToxProcess(tox_env, self.path)
+            if self._running_processes() < self.max_concurrent:
+                self.start_next_process()
+            else:
+                self.update_status()
+
     def poll_processes(self):
         for env, proc in sorted(self.tox_procs.items()):
-            if proc.exit_status is None:
+            if proc is not None and proc.exit_status is None:
                 proc.poll()
+                if proc.exit_status is not None and self._running_processes() < self.max_concurrent:
+                    self.start_next_process()
         self.update_status()
 
     def kill_processes(self):
         for _, proc in self.tox_procs.items():
-            proc.terminate()
+            if proc is not None:
+                proc.terminate()
         self.tox_procs = {}
+
+    def _running_processes(self):
+        running = 0
+        for _, proc in self.tox_procs.items():
+            if proc is not None and proc.exit_status is None:
+                running += 1
+        return running
 
     def update_status(self):
         with self.lock:
@@ -113,7 +161,9 @@ class ToxdogThread(threading.Thread):
             sys.stdout.flush()
 
             for env, proc in sorted(self.tox_procs.items()):
-                if proc.exit_status is None:
+                if proc is None:
+                    sys.stdout.write(Fore.LIGHTBLACK_EX + env + Style.RESET_ALL + ' ')
+                elif proc.exit_status is None:
                     sys.stdout.write(Fore.LIGHTYELLOW_EX + env + Style.RESET_ALL + ' ')
                 elif proc.exit_status == 0:
                     sys.stdout.write(Fore.LIGHTGREEN_EX + env + Style.RESET_ALL + ' ')
@@ -125,7 +175,7 @@ class ToxdogThread(threading.Thread):
 
 
 class ToxdogEventHandler(RegexMatchingEventHandler):
-    def __init__(self):
+    def __init__(self, path, envs, omit_envs, max_concurrent):
         super(ToxdogEventHandler, self).__init__(regexes=['.*\.py$', '.*\.rst$', '.*\.md$', '.*/tox\.ini$'],
                                                  ignore_directories=True,
                                                  ignore_regexes=['.*/__pycache__/.*',
@@ -146,10 +196,10 @@ class ToxdogEventHandler(RegexMatchingEventHandler):
         self.queue = Queue()
         self.last_event = 0
 
-        self.thread = None
+        self.thread = ToxdogThread(self.queue, path, envs, omit_envs)
+        self.thread.max_concurrent = max_concurrent
 
     def start(self):
-        self.thread = ToxdogThread(self.queue)
         self.thread.start()
         self.queue.put_nowait(None)
 
@@ -171,10 +221,32 @@ class ToxdogEventHandler(RegexMatchingEventHandler):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c',
+                        nargs='?',
+                        default=os.getcwd(),
+                        help=('Location of the tox.ini file. Defaults to '
+                              'current working directory.'))
+    parser.add_argument('-n',
+                        nargs='?',
+                        default=min(8, multiprocessing.cpu_count()),
+                        help=('Number of concurrent jobs allowed. Default '
+                              'is number of CPUs or 8, whichever is smaller.'))
+    parser.add_argument('-e',
+                        nargs='*',
+                        help=('Environments to allow from the tox.ini file. '
+                              'Default is all environments.'))
+    parser.add_argument('-o',
+                        nargs='*',
+                        help=('Environments to omit from the tox.ini file. '
+                              'Default is omitting no environments.'))
+
+    args = vars(parser.parse_args(sys.argv[1:]))
+
     observer = Observer()
-    handler = ToxdogEventHandler()
+    handler = ToxdogEventHandler(args['c'], args['e'] or [], args['o'] or [], int(args['n']))
     handler.start()
-    observer.schedule(handler, os.getcwd(), True)
+    observer.schedule(handler, args['c'], True)
     observer.start()
 
     try:
