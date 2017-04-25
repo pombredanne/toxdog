@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from setuptools import setup
 
 base_package = 'toxdog'
@@ -18,8 +19,10 @@ with open('README.rst') as f:
 with open('CHANGELOG.rst') as f:
     changes = f.read()
 
-with open('requirements.txt') as f:
-    requirements = [line for line in f.read().split('\n') if len(line.strip())]
+
+install_requires = ['colorama', 'tox', 'watchdog']
+if sys.version_info < (3, 0):
+    install_requires.append('subprocess32')
 
 
 if __name__ == '__main__':
@@ -39,12 +42,12 @@ if __name__ == '__main__':
                 'toxdog = toxdog:main'
             ]
         },
-        install_requires=requirements,
+        install_requires=install_requires,
         keywords=['toxdog'],
         py_modules=['toxdog'],
         zip_safe=False,
         classifiers=['Intended Audience :: Developers',
-                     'License :: OSI Approved :: MIT License',
+                     'License :: OSI Approved :: Apache Software License',
                      'Natural Language :: English',
                      'Operating System :: OS Independent',
                      'Programming Language :: Python :: 2',
@@ -53,5 +56,8 @@ if __name__ == '__main__':
                      'Programming Language :: Python :: 3.3',
                      'Programming Language :: Python :: 3.4',
                      'Programming Language :: Python :: 3.5',
-                     'Programming Language :: Python :: 3.6']
+                     'Programming Language :: Python :: 3.6',
+                     'Topic :: Software Development :: Build Tools',
+                     'Topic :: Software Development :: Testing',
+                     'Topic :: Utilities']
     )
