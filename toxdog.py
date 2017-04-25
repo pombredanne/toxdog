@@ -23,6 +23,7 @@ import argparse
 import multiprocessing
 import os
 import sys
+
 try:
     import subprocess32 as subprocess
 except ImportError:
@@ -51,7 +52,8 @@ class ToxProcess(object):
                                      shell=True,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT,
-                                     cwd=path)
+                                     cwd=path,
+                                     env=os.environ)
         self.output = b''
         self._buffer = b''
 
@@ -104,7 +106,7 @@ class ToxdogThread(threading.Thread):
                     self.start_processes('%s %s' % (action, path))
             except Empty:
                 self.poll_processes()
-                time.sleep(0.5)
+                time.sleep(1.0)
 
         self.kill_processes()
 
@@ -117,7 +119,9 @@ class ToxdogThread(threading.Thread):
 
         self.kill_processes()
 
-        self.tox_waiting_envs = [x for x in sorted(tox_config.envconfigs) if (len(self.envs) == 0 or x in self.envs) and x not in self.omit_envs]
+        self.tox_waiting_envs = [x for x in sorted(tox_config.envconfigs)
+                                 if (len(self.envs) == 0 or x in self.envs) and
+                                 x not in self.omit_envs]
         for env in self.tox_waiting_envs:
             self.tox_procs[env] = None
         self.start_next_process()
@@ -138,7 +142,8 @@ class ToxdogThread(threading.Thread):
         for env, proc in sorted(self.tox_procs.items()):
             if proc is not None and proc.exit_status is None:
                 proc.poll()
-                if proc.exit_status is not None and self._running_processes() < self.max_concurrent:
+                if (proc.exit_status is not None and
+                        self._running_processes() < self.max_concurrent):
                     self.start_next_process()
         self.update_status()
 
@@ -176,7 +181,10 @@ class ToxdogThread(threading.Thread):
 
 class ToxdogEventHandler(RegexMatchingEventHandler):
     def __init__(self, path, envs, omit_envs, max_concurrent):
-        super(ToxdogEventHandler, self).__init__(regexes=['.*\.py$', '.*\.rst$', '.*\.md$', '.*/tox\.ini$'],
+        super(ToxdogEventHandler, self).__init__(regexes=['.*\.py$',
+                                                          '.*\.rst$',
+                                                          '.*\.md$',
+                                                          '.*/tox\.ini$'],
                                                  ignore_directories=True,
                                                  ignore_regexes=['.*/__pycache__/.*',
                                                                  '\.ropeproject/.*',
