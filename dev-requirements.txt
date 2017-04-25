@@ -1,0 +1,7 @@
+check-manifest==0.35
+tox==2.7.0
+flake8==3.3.0
+hypothesis==3.8.0
+Sphinx==1.5.5
+readme_renderer==17.2
+codecov==2.0.7
